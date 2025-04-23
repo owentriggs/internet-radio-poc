@@ -1,161 +1,88 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Internet Radio Client</title>
-  <!-- Import Materialize CSS -->
-  <link href="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/css/materialize.min.css" rel="stylesheet">
-  <!-- Import Materialize JavaScript -->
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/js/materialize.min.js"></script>
-  <!-- Import jQuery -->
-  <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-  <!-- Custom Styles -->
-  <style>
-    body {
-      background-color: #f5f5f5; /* Light background */
-      color: #212121;
-    }
-    .card {
-      background-color: #ffffff; /* White cards */
-    }
-    .card .card-title,
-    .card-content label {
-      color: #212121;
-    }
-    .btn {
-      border-radius: 50px;
-    }
-    .btn.teal {
-      background-color: #00796b !important;
-    }
-    .btn.blue {
-      background-color: #1976d2 !important;
-    }
-    .collection {
-      background-color: #ffffff;
-      border: 1px solid #e0e0e0;
-    }
-    .collection-item {
-      background-color: #ffffff;
-      border-bottom: 1px solid #e0e0e0;
-      color: #212121;
-    }
-    .collection-item .value {
-      font-weight: bold;
-      color: #00796b;
-    }
-    .input-field input[type="text"] {
-      color: #212121;
-      border-bottom: 1px solid #00796b;
-    }
-    .input-field input[type="text"]:focus {
-      border-bottom: 1px solid #00796b;
-      box-shadow: 0 1px 0 0 #00796b;
-    }
-    .input-field label {
-      color: #00796b;
-    }
-    .input-field label.active {
-      color: #00796b;
-    }
-  </style>
-  <!-- Import radio.js -->
-  <script src="radio.js"></script>
-  <script>
-    // Initialize Materialize components and handle events
-    document.addEventListener('DOMContentLoaded', function() {
-      // Initialize Materialize tooltips
-      const elems = document.querySelectorAll('.tooltipped');
-      M.Tooltip.init(elems);
+var radio = {
+  url: 'http://revo/fsapi/',
+  sessionId: null,
+  friendlyName: null,
+  volumeSteps: null,
+  volume: null,
+  playInfoName: null,
+  playInfoText: null,
 
-      // jQuery ready function
-      $(document).ready(function() {
-        // Set URL logic
-        $('#set-url-btn').click(function() {
-          const newUrl = $('#url-input').val();
-          if (newUrl) {
-            radio.url = `http://${newUrl}/fsapi/`;
-            $('#url .value').text(radio.url);
-            M.toast({html: 'URL updated! Now fetching radio information.', classes: 'green'});
-          } else {
-            M.toast({html: 'Please enter a valid URL or IP address.', classes: 'red'});
-          }
-        });
+  request: function (operation, value, success) {
+    var url = this.url + operation + '?pin=1234';
+    if (radio.sessionId) {
+      url += '&sid=' + radio.sessionId;
+    }
+    if (value) {
+      url += '&value=' + value;
+    }
+    console.log('Request URL:', url);
 
-        // Fetch Info logic
-        $('#fetch-info-btn').click(function() {
-          M.toast({html: 'Fetching radio information...', classes: 'blue'});
-          radio.getSessionId(function(radio) {
-            $('#session-id .value').text(radio.sessionId);
-
-            radio.getFriendlyName(function(radio) {
-              $('#friendly-name .value').text(radio.friendlyName);
-            });
-
-            radio.getVolumeSteps(function(radio) {
-              $('#volume-steps .value').text(radio.volumeSteps);
-            });
-
-            radio.getPlayInfoName(function(radio) {
-              $('#play-info-name .value').text(radio.playInfoName);
-            });
-
-            radio.getPlayInfoText(function(radio) {
-              $('#play-info-text .value').text(radio.playInfoText);
-            });
-
-            radio.getVolume(function(radio) {
-              $('#volume .value').text(radio.volume);
-            });
-          });
-        });
-      });
+    $.get({
+      url: url,
+      success: function (data) {
+        console.log('API Response:', data); // Log raw API response
+        var xml = $('fsapiResponse', data);
+        console.log('Parsed XML:', xml); // Log parsed XML
+        if (typeof success !== 'undefined') {
+          success(radio, xml);
+        }
+      },
+      error: function (xhr, status, error) {
+        console.error('API Request Failed:', status, error); // Log errors
+      }
     });
-  </script>
-</head>
-<body>
-  <!-- Main Container -->
-  <div class="container">
-    <!-- Header -->
-    <div class="card-panel teal">
-      <h4 class="white-text center-align">Internet Radio Client</h4>
-    </div>
+  },
 
-    <!-- URL Input Section -->
-    <div class="card">
-      <div class="card-content">
-        <span class="card-title">Radio Configuration</span>
-        <div class="input-field">
-          <input id="url-input" type="text" placeholder="Enter radio IP or hostname">
-          <label for="url-input">Radio IP/Hostname</label>
-        </div>
-        <div class="card-action">
-          <button id="set-url-btn" class="btn btn-rounded waves-effect waves-light teal tooltipped" data-position="top" data-tooltip="Set the radio URL">
-            Set URL
-          </button>
-          <button id="fetch-info-btn" class="btn btn-rounded waves-effect waves-light blue tooltipped" data-position="top" data-tooltip="Fetch radio information">
-            Fetch Info
-          </button>
-        </div>
-      </div>
-    </div>
+  updateUI: function (id, value) {
+    console.log(`Updating UI element #${id} with value:`, value); // Debugging
+    $(`#${id} .value`).text(value || 'N/A'); // Update the value or show 'N/A' if empty
+  },
 
-    <!-- Display Radio Information -->
-    <div class="card">
-      <div class="card-content">
-        <span class="card-title">Radio Information</span>
-        <ul class="collection">
-          <li class="collection-item" id="url">URL: <span class="value">Not Set</span></li>
-          <li class="collection-item" id="session-id">Session ID: <span class="value"></span></li>
-          <li class="collection-item" id="friendly-name">Friendly Name: <span class="value"></span></li>
-          <li class="collection-item" id="volume-steps">Volume Steps: <span class="value"></span></li>
-          <li class="collection-item" id="volume">Current Volume: <span class="value"></span></li>
-          <li class="collection-item" id="play-info-name">Now Playing: <span class="value"></span></li>
-          <li class="collection-item" id="play-info-text">Play Info Text: <span class="value"></span></li>
-        </ul>
-      </div>
-    </div>
-  </div>
-</body>
-</html>
+  getSessionId: function (success) {
+    this.request('CREATE_SESSION', null, function (radio, xml) {
+      radio.sessionId = xml.find('sessionId').text();
+      radio.updateUI('session-id', radio.sessionId);
+      success(radio);
+    });
+  },
+
+  getFriendlyName: function (success) {
+    this.request('GET/netRemote.sys.info.friendlyName', null, function (radio, xml) {
+      radio.friendlyName = xml.find('value').text();
+      radio.updateUI('friendly-name', radio.friendlyName);
+      success(radio);
+    });
+  },
+
+  getVolumeSteps: function (success) {
+    this.request('GET/netRemote.sys.caps.volumeSteps', null, function (radio, xml) {
+      radio.volumeSteps = xml.find('value').text();
+      radio.updateUI('volume-steps', radio.volumeSteps);
+      success(radio);
+    });
+  },
+
+  getVolume: function (success) {
+    this.request('GET/netRemote.sys.audio.volume', null, function (radio, xml) {
+      radio.volume = xml.find('value').text();
+      radio.updateUI('volume', radio.volume);
+      success(radio);
+    });
+  },
+
+  getPlayInfoName: function (success) {
+    this.request('GET/netRemote.play.info.name', null, function (radio, xml) {
+      radio.playInfoName = xml.find('value').text();
+      radio.updateUI('play-info-name', radio.playInfoName);
+      success(radio);
+    });
+  },
+
+  getPlayInfoText: function (success) {
+    this.request('GET/netRemote.play.info.text', null, function (radio, xml) {
+      radio.playInfoText = xml.find('value').text();
+      radio.updateUI('play-info-text', radio.playInfoText);
+      success(radio);
+    });
+  }
+};
